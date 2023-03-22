@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# read command line arguments
+if [[ -z $1 || -z $2 ]]; then
+    echo "Usage: track [pid] [sleep]" >&2
+    echo Monitor resource usage of a single process. \
+        Exit if no process running with PID='['pid']' >&2
+    echo "(For demonstration, execute \`sleep 10 & track \$! 1\`)" >&2
+    exit 1
+else
+    PID=$1
+    SLEEP=$2
+fi 
+
+# check if PID is alive
+CMD=$(ps -o command --no-headers --cols 9999 $PID)
+if [[ -z $CMD ]]; then
+    echo No process running with PID=$PID >&2
+    exit 1
+else
+    echo "Tracking resource usage of PID=$PID every $SLEEP second(s)." >&2
+    echo -e "Command line: $CMD" >&2
+fi
+
+# get resource usgae
+echo "%CPU %MEM TIME+ DATE"
+while true; do
+    # get current date/time
+    DATE=$(date +%m-%d)
+    TIME=$(date +%H:%M:%S)
+    # get resource usage of PID
+    L_OUT=$(ps --no-header -o pid,%cpu,%mem,time $PID)
+    if  [[ -n $L_OUT ]]; then 
+        # PID exist >> echo $L_OUT and sleep
+        echo -e "$L_OUT"
+        sleep $SLEEP
+    else
+        # PID absent >> end while
+        echo "No process of pid=$PID" >&2
+        exit 0
+    fi
+done

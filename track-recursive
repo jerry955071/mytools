@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# read command line arguments
+if [[ -z $1 || -z $2 ]]; then
+    echo "Usage: track-recursive [pid] [sleep]" >&2
+    echo "Monitor resource usage of a parent process and its child process recursively." \
+        "Exit if no parent process running with PID=[pid]" >&2
+    echo "(try \`track-recursive \$\$ 1\`)" >&2
+    exit 1
+else
+    PID=$1
+    SLEEP=$2
+fi 
+
+# check if PID is alive
+CMD=$(ps -o command --no-headers --cols 9999 $PID)
+if [[ -z $CMD ]]; then
+    echo No process running with PID=$PID >&2
+    exit 1
+else
+    echo "Tracking resource usage of PID=$PID and its child every $SLEEP second(s)." >&2
+    echo -e "Command line: $CMD" >&2
+    echo -e "DATE/TIME\tPID\tPPID\tSTATE\t%CPU\t%MEM\tTIME+\tCMD"
+fi
+
+
+function find_child () {
+    local pid=$1
+    # report self status
+    local SELF=$(
+        echo "$PS_OUT" | \
+        awk \
+            -v PID=$pid \
+            -v DATE=$DATE \
+            -v TIME=$TIME \
+            -v OFS='\t' \
+            '$1 == PID {print "["DATE"-"TIME"]",$0}'
+    )
+    if [[ -n $SELF ]]; then
+        echo -e "$SELF"
+    else
+        return 0
+    fi
+    # find childs
+    local childs=$(
+        echo "$PS_OUT" | \
+        awk \
+            -v PID=$pid \
+            -v DATE=$DATE \
+            -v TIME=$TIME \
+            -v OFS='\t' \
+            '$2 == PID {print $1}'
+    )
+    if [[ -n $childs ]]; then
+        for c in $childs; do
+            find_child $c
+        done
+    else
+        return 0
+    fi
+}
+
+CHECK=$(ps --no-header -o pid $PID)
+while [[ -n CHECK ]]; do
+    # get date/time
+    DATE=$(date +%m%d)
+    TIME=$(date +%H:%M:%S)
+    
+    # ps
+    PS_OUT=$(ps -o pid,ppid,state,%cpu,%mem,time,ucmd ax)
+
+    # find child recursively
+    find_child $PID
+    sleep $SLEEP
+
+    # check if process is alive
+    CHECK=$(ps --no-header -o pid $PID)
+done
+
+# # get resource usgae
+# echo "PID PPID %CPU %MEM TIME+ DATE"
+# while true; do
+#     # get current date/time
+#     DATE=$(date +%m-%d)
+#     TIME=$(date +%H:%M:%S)
+#     # get resource usage of PID
+#     L_OUT=$(
+#         ps -o pid,ppid,%cpu,%mem,time,command ax |
+#         awk \
+#             -v PID=$PID \
+#             -v DATE=$DATE \
+#             -v TIME=$TIME \
+#             -v OFS='\t' \
+#             '$1 == PID {print $1,$2,$3,$4,$5,$6,"["TIME" "DATE"]"}; \
+#              $2 == PID {print $1,$2,$3,$4,$5,$6,"["TIME" "DATE"]"}'
+#     )
+#     if  [[ -n $L_OUT ]]; then 
+#         # PID exist >> echo $L_OUT and sleep
+#         echo -e "$L_OUT"
+#         sleep $SLEEP
+#     else
+#         # PID absent >> end while
+#         echo "No process of pid=$PID" >&2
+#         exit 0
+#     fi
+# done
