@@ -73,7 +73,6 @@ while [[ -n CHECK ]]; do
 
     # find child recursively
     find_child $PID
-    echo "-"
     sleep $SLEEP
 
     # check if process is alive
