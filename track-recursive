@@ -26,8 +26,6 @@ fi
 # check if stdout is terminal
 if test -t 1; then
     COLORED=true
-else
-    COLORED=false
 fi
 
 function find_child () {
@@ -99,10 +97,10 @@ while [[ -n CHECK ]]; do
     # ps
     PS_OUT=$(ps -o pid,ppid,state,%cpu,%mem,time,etime,ucmd ax)
 
-    # find child recursively
+    # find_child (recursively)
     find_child $PID
     sleep $SLEEP
 
-    # check if process is alive
+    # check if the process is alive
     CHECK=$(ps --no-header -o pid $PID)
 done
