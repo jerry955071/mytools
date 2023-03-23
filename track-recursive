@@ -19,40 +19,70 @@ if [[ -z $CMD ]]; then
     exit 1
 else
     echo "Tracking resource usage of PID=$PID and its child every $SLEEP second(s)." >&2
-    echo -e "Command line: $CMD" >&2
-    echo -e "DATE/TIME\tPID\tPPID\tSTATE\t%CPU\t%MEM\tTIME+\tCMD"
+    echo -e "Command: $CMD" >&2
+    echo -e "PID\tPPID\tSTATE\t%CPU\t%MEM\tTIME+\tCMD\tDATE/TIME"
 fi
 
+# check if stdout is terminal
+if test -t 1; then
+    COLORED=true
+else
+    COLORED=false
+fi
 
 function find_child () {
     local pid=$1
-    # report self status
+    # get self status
     local SELF=$(
         echo "$PS_OUT" | \
         awk \
-            -v PID=$pid \
+            -v OFS='\t' \
+            -v pid=$pid \
+            -v MPID=$PID \
             -v DATE=$DATE \
             -v TIME=$TIME \
-            -v OFS='\t' \
-            '$1 == PID {print "["DATE"-"TIME"]",$0}'
+            -v COLORED=$COLORED \
+            '{
+                if ($1 == pid) 
+                {
+                    if (COLORED) 
+                    {
+                        if ($1 == MPID) 
+                        {
+                            $1="\033[0;31m"$1"\033[0m";
+                        }
+                        if ($2 == MPID) 
+                        {
+                            $2="\033[0;31m"$2"\033[0m";
+                        }
+                        if ($3 == "R") 
+                        {
+                            $3="\033[0;32m"$3"\033[0m";
+                        }    
+                    }
+                    print $1,$2,$3,$4,$5,$6,$7,"["DATE"-"TIME"]";
+                }
+            }'
     )
+    # report self status
     if [[ -n $SELF ]]; then
-        CL='\033[0;31m' # Red
-        NC='\033[0m' # No Color
-        echo -e "${SELF/"$PID"/"$CL""$PID""$NC"}"
+        echo -e "$SELF"
     else
         return 0
     fi
+
     # find childs
     local childs=$(
         echo "$PS_OUT" | \
         awk \
-            -v PID=$pid \
+            -v pid=$pid \
             -v DATE=$DATE \
             -v TIME=$TIME \
             -v OFS='\t' \
-            '$2 == PID {print $1}'
+            '$2 == pid {print $1}'
     )
+
+    # trigger find_child for childs
     if [[ -n $childs ]]; then
         for c in $childs; do
             find_child $c
@@ -78,31 +108,3 @@ while [[ -n CHECK ]]; do
     # check if process is alive
     CHECK=$(ps --no-header -o pid $PID)
 done
-
-# # get resource usgae
-# echo "PID PPID %CPU %MEM TIME+ DATE"
-# while true; do
-#     # get current date/time
-#     DATE=$(date +%m-%d)
-#     TIME=$(date +%H:%M:%S)
-#     # get resource usage of PID
-#     L_OUT=$(
-#         ps -o pid,ppid,%cpu,%mem,time,command ax |
-#         awk \
-#             -v PID=$PID \
-#             -v DATE=$DATE \
-#             -v TIME=$TIME \
-#             -v OFS='\t' \
-#             '$1 == PID {print $1,$2,$3,$4,$5,$6,"["TIME" "DATE"]"}; \
-#              $2 == PID {print $1,$2,$3,$4,$5,$6,"["TIME" "DATE"]"}'
-#     )
-#     if  [[ -n $L_OUT ]]; then 
-#         # PID exist >> echo $L_OUT and sleep
-#         echo -e "$L_OUT"
-#         sleep $SLEEP
-#     else
-#         # PID absent >> end while
-#         echo "No process of pid=$PID" >&2
-#         exit 0
-#     fi
-# done
