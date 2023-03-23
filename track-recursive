@@ -20,7 +20,7 @@ if [[ -z $CMD ]]; then
 else
     echo "Tracking resource usage of PID=$PID and its child every $SLEEP second(s)." >&2
     echo -e "Command: $CMD" >&2
-    echo -e "PID\tPPID\tSTATE\t%CPU\t%MEM\tTIME+\tCMD\tDATE/TIME"
+    echo -e "PID\tPPID\tSTATE\t%CPU\t%MEM\tCPU TIME\tELAPSED TIME\tDATE\tCMD"
 fi
 
 # check if stdout is terminal
@@ -40,7 +40,6 @@ function find_child () {
             -v pid=$pid \
             -v MPID=$PID \
             -v DATE=$DATE \
-            -v TIME=$TIME \
             -v COLORED=$COLORED \
             '{
                 if ($1 == pid) 
@@ -60,7 +59,7 @@ function find_child () {
                             $3="\033[0;32m"$3"\033[0m";
                         }    
                     }
-                    print $1,$2,$3,$4,$5,$6,$7,"["DATE"-"TIME"]";
+                    print $1,$2,$3,$4,$5,$6,$7,DATE,$8;
                 }
             }'
     )
@@ -95,11 +94,10 @@ function find_child () {
 CHECK=$(ps --no-header -o pid $PID)
 while [[ -n CHECK ]]; do
     # get date/time
-    DATE=$(date +%m%d)
-    TIME=$(date +%H:%M:%S)
+    DATE=$(date +%m-%d-%H:%M:%S)
     
     # ps
-    PS_OUT=$(ps -o pid,ppid,state,%cpu,%mem,time,ucmd ax)
+    PS_OUT=$(ps -o pid,ppid,state,%cpu,%mem,time,etime,ucmd ax)
 
     # find child recursively
     find_child $PID
