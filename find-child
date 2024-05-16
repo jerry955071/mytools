@@ -1,16 +1,15 @@
 #!/bin/bash
 
 # read command line arguments
-if [[ -z $1 || -z $2 ]]; then
-    echo "Usage: track-recursive [pid] [sleep]" >&2
-    echo "Monitor resource usage of a parent process and its child process recursively." \
-        "Exit if no parent process running with PID=[pid]" >&2
-    echo "(try \`track-recursive \$\$ 1\`)" >&2
+if [[ -z $1 ]]; then
+    echo "Usage: find-child [pid]" >&2
+    echo "Recursively collect all child of the given PID." \
+        "Exit if no process running with PID=[pid]" >&2
+    echo "(try \`find-child \$\$\`)" >&2
     exit 1
 else
     PID=$1
-    SLEEP=$2
-fi 
+fi
 
 # check if PID is alive
 CMD=$(ps -o command --no-headers --cols 9999 $PID)
@@ -18,8 +17,7 @@ if [[ -z $CMD ]]; then
     echo No process running with PID=$PID >&2
     exit 1
 else
-    
-    echo "Tracking resource usage of PID=$PID and its child every $SLEEP second(s)." >&2
+    echo "Find all child of PID=$PID" >&2
     echo -e "Command: $CMD" >&2
     echo -e "PID\tPPID\tSTATE\t%CPU\t%MEM\tCPU TIME\tELAPSED TIME\tDATE\tCMD"
 fi
@@ -90,28 +88,14 @@ function find_child () {
     fi
 }
 
-# save the cursor position
-tput sc
-while :; do
-    # check if the process is alive
-    CHECK=$(ps --no-header -o pid $PID)
-    if [[ -z $CHECK ]]; then
-        echo No process running with PID=$PID >&2
-        exit 0
-    fi
-    
-    # clear to end of screen
-    tput ed
-    # restore the cursor position
-    tput rc
-    # get date/time
-    DATE=$(date +%m-%d-%H:%M:%S)
-    # ps
-    PS_OUT=$(ps -o pid,ppid,state,%cpu,%mem,time,etime,ucmd ax)
-    # find_child (recursively)
-    find_child $PID
-    # sleep
-    sleep $SLEEP
-    
-done
+CHECK=$(ps --no-header -o pid $PID)
+
+# get date/time
+DATE=$(date +%m-%d-%H:%M:%S)
+
+# ps
+PS_OUT=$(ps -o pid,ppid,state,%cpu,%mem,time,etime,ucmd ax)
+
+# find_child (recursively)
+find_child $PID
 

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# This script is used to tail the latest log file in the specified directory.
+# The directory is specified as the first argument to the script.
+# The script will look for the latest log file in the directory and tail it.
+
+# Check if the directory argument is provided
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <directory>"
+    exit 1
+fi
+
+# Check if the directory exists
+if [ ! -d "$1" ]; then
+    echo "Directory $1 does not exist."
+    exit 1
+fi
+
+# Get the latest log file in the directory
+latest_log=$(ls -t $1/*/*.log | head -n 1)
