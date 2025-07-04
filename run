@@ -1,6 +1,7 @@
 #!/bin/bash
-# Usage
-# run <Snakemake workflow> <cpus> <rule>
+# run on bash strict mode
+set -euo pipefail
+IFS=$'\n\t'
 
 # =========================================================
 # check command line arguments
