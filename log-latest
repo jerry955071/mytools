@@ -1,0 +1,16 @@
+#!/bin/bash
+# run on bash strict mode
+set -euo pipefail
+IFS=$'\n\t'
+
+# This script is used to tail the latest log file in the specified directory.
+# The directory is specified as the first argument to the script.
+# The script will look for the latest log file in the directory and tail it.
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <directory>"
+    exit 1
+fi
+
+latest=$(ls -lR --sort=t -r $1 | tail -n1 | awk '{print $NF}')
+full_path=$(find $1 -name $latest)
+tail -f $full_path
